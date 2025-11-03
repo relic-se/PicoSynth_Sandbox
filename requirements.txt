@@ -1,3 +1,5 @@
+asyncio
+
 Adafruit-CircuitPython-Debouncer
 Adafruit-CircuitPython-CharacterLCD
 Adafruit-CircuitPython-Midi

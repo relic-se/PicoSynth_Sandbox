@@ -141,7 +141,7 @@ def ttp_press(i:int) -> None:
     if settings.keyboard_touch:
         keyboard.append(notenum)
     if settings.midi_touch_out:
-        msg = NoteOn(notenum)
+        msg = NoteOn(notenum, channel=settings.midi_channel)
         hardware.midi_uart.send(msg)
         hardware.midi_usb.send(msg)
 hardware.ttp.on_press = ttp_press
@@ -151,7 +151,7 @@ def ttp_release(i:int) -> None:
     if settings.keyboard_touch:
         keyboard.remove(notenum)
     if settings.midi_touch_out:
-        msg = NoteOff(notenum)
+        msg = NoteOff(notenum, channel=settings.midi_channel)
         hardware.midi_uart.send(msg)
         hardware.midi_usb.send(msg)
 hardware.ttp.on_release = ttp_release
@@ -188,15 +188,15 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
             maximum=15,
             loop=True,
             decimals=0,
-            on_update=lambda value, item: menu.load_patch(lcd_menu, item, value, 'sampler'),
+            on_update=lambda value, item: menu.load(lcd_menu, item, value, 'sampler'),
         ),
         synthmenu.String("Name"),
-        synthmenu.Action("Save", lambda: menu.save_patch(lcd_menu, patch.value, 'sampler')),
+        synthmenu.Action("Save", lambda: menu.save(lcd_menu, patch.value, 'sampler')),
     )),
     synthmenu.Group("Audio", (
         synthmenu.Percentage(
             title="Level",
-            default=1.0,
+            default=0.25,
             on_update=lambda value, item: menu.set_attribute(mixer.voice, 'level', value),
         ),
     )),
@@ -250,8 +250,9 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
             on_sustain_level_update=lambda value, item: menu.set_attribute(voices, 'sustain_level', value),
             on_release_time_update=lambda value, item: menu.set_attribute(voices, 'release_time', value),
         ),
-        synthmenu.Number(
+        synthmenu.Percentage(
             title="Velocity",
+            default=1.0,
             on_update=lambda value, item: menu.set_attribute(voices, 'velocity_amount', value),
         ),
         synthmenu.Group("Filter", (

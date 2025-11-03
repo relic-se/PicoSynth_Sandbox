@@ -254,10 +254,10 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                 maximum=15,
                 loop=True,
                 decimals=0,
-                on_update=lambda value, item: menu.load_patch(lcd_menu, item, value, 'synthesizer'),
+                on_update=lambda value, item: menu.load(lcd_menu, item, value, 'synthesizer'),
             ),
             synthmenu.String("Name"),
-            synthmenu.Action("Save", lambda: menu.save_patch(lcd_menu, patch.value, 'synthesizer')),
+            synthmenu.Action("Save", lambda: menu.save(lcd_menu, patch.value, 'synthesizer')),
         )),
         synthmenu.Group("Audio", (
             synthmenu.Percentage(

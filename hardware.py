@@ -20,7 +20,7 @@ import os
 CHANNELS = 2
 BITS = 16
 SAMPLE_RATE = 44100
-BUFFER_SIZE = 8192
+BUFFER_SIZE = 4096
 TASK_SLEEP = 0.001
 
 COLUMNS = 16
@@ -41,6 +41,7 @@ spi_clock, spi_mosi, spi_miso, spi_cs = board.GP2, board.GP3, board.GP0, board.G
 if board.board_id == "raspberry_pi_pico":
     microcontroller.cpu.frequency = 250000000
 elif board.board_id == "raspberry_pi_pico2":
+    BUFFER_SIZE = 8192
     SAMPLE_RATE = 48000
     microcontroller.cpu.frequency = 300000000
 

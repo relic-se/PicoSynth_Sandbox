@@ -5,22 +5,30 @@
 import audiomixer
 import synthio
 import asyncio
+import os
+import board
 
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
 
 import synthkeyboard
 import synthvoice.percussive
+import synthmenu.character_lcd
+
+import adafruit_midi
+from adafruit_midi.note_on import NoteOn
+from adafruit_midi.note_off import NoteOff
+from adafruit_midi.midi_message import MIDIMessage, MIDIUnknownEvent
 
 import hardware
 import menu
+import settings
+
+if board.board_id == "raspberry_pi_pico":
+    hardware.SAMPLE_RATE = 22050
+    hardware.BUFFER_SIZE = 2048
 
 hardware.init()
-
-hardware.lcd.clear()
-hardware.lcd.cursor = True
-hardware.lcd.blink = False
-hardware.lcd.home()
 
 ## Audio
 
@@ -39,17 +47,8 @@ synth = synthio.Synthesizer(
     channel_count=hardware.CHANNELS,
 )
 mixer.voice[0].play(synth)
-mixer.voice[0].level = 0.05 # Fix clipping on amp
 
-## Global parameters
-voice=0
-bpm=120
-alt_enc=False
-alt_key=False
-
-## Voices
-
-voices = [
+voices = (
     synthvoice.percussive.Kick(synth),
     synthvoice.percussive.Snare(synth),
     synthvoice.percussive.ClosedHat(synth),
@@ -58,8 +57,7 @@ voices = [
     synthvoice.percussive.MidTom(synth),
     synthvoice.percussive.HighTom(synth),
     synthvoice.percussive.Ride(synth),
-]
-
+)
 # No update task required
 
 ## Sequencer
@@ -67,23 +65,23 @@ voices = [
 sequencer = synthkeyboard.Sequencer(
     length=16,
     tracks=len(voices),
-    bpm=120
+    bpm=120,
 )
+sequencer.steps = synthkeyboard.TimerStep.SIXTEENTH
 
-sequencer.on_step = lambda pos: hardware.lcd.cursor_position(pos, 1)
-
-def sequencer_press(notenum:int, velocity:float) -> None:
+def sequencer_press(notenum: int, velocity: float) -> None:
     voices[(notenum - 1) % len(voices)].press(velocity)
 
-    msg = NoteOn(notenum)
+    msg = NoteOn(notenum, velocity=int(velocity * 127), channel=settings.midi_channel)
     hardware.midi_uart.send(msg)
     hardware.midi_usb.send(msg)
 sequencer.on_press = sequencer_press
 
 def sequencer_release(notenum):
-    if (notenum - 1) % len(voices) == 3: # Closed Hat
-        voices[4].release() # Force release Open Hat
-    synth.release((notenum - 1) % len(voices))
+    voice = (notenum - 1) % len(voices)
+    if voice == 3: # Closed Hat
+        voices[voice + 1].release() # Force release Open Hat
+    voices[voice].release()
 
     # Send midi note off
     msg = NoteOff(notenum)
@@ -91,40 +89,56 @@ def sequencer_release(notenum):
     hardware.midi_usb.send(msg)
 sequencer.on_release = sequencer_release
 
-def update_display():
-    hardware.lcd.cursor_position(0, 0)
-    hardware.lcd.message = "{:<11s}{:s} {:>3d}".format(
-        voices[voice].__qualname__[:11],
-        ">" if alt_enc else "<",
-        bpm
-    )
-    hardware.lcd.cursor_position(0, 1)
-    hardware.lcd.message = "".join(["*" if sequencer.has_note(i, voice) else " " for i in range(sequencer.length)])
+## USB & Hardware MIDI
+
+def midi_process_message(msg: MIDIMessage) -> None:
+    if settings.midi_thru and not isinstance(msg, MIDIUnknownEvent):
+        hardware.midi_usb.send(msg)
+        hardware.midi_uart.send(msg)
+
+    if settings.midi_channel is not None and msg.channel != settings.midi_channel:
+        return
+    
+    if isinstance(msg, NoteOn):
+        if msg.velocity > 0.0:
+            voices[(msg.note - 1) % len(voices)].press(msg.velocity)
+        else:
+            voices[(msg.note - 1) % len(voices)].release()
+
+    elif isinstance(msg, NoteOff):
+        voices[(msg.note - 1) % len(voices)].release()
+    
+def midi_process_messages(midi:adafruit_midi.MIDI, limit:int = 32) -> None:
+    while limit:
+        if not (msg := midi.receive()):
+            break
+        midi_process_message(msg)
+        limit -= 1
+
+async def midi_task() -> None:
+    while True:
+        midi_process_messages(hardware.midi_usb)
+        midi_process_messages(hardware.midi_uart)
+        await asyncio.sleep(hardware.TASK_SLEEP)
 
 ## Touch
 
 def ttp_press(position:int) -> None:
-    global voice
-
-    position = position % sequencer.length
-    hardware.lcd.cursor_position(position, 1)
-    if not sequencer.has_note(
-        position=position,
-        track=voice,
-    ):
-        sequencer.set_note(
-            position=position,
-            notenum=voice+1,
-            velocity=1.0,
-            track=voice,
-        )
-        hardware.lcd.message = "*"
-    else:
-        sequencer.remove_note(
-            position=position,
-            track=voice
-        )
-        hardware.lcd.message = " "
+    if not settings.keyboard_touch:
+        return
+    
+    sequence = lcd_menu.selected
+    if isinstance(sequence, synthmenu.Group) and not isinstance(sequence, synthmenu.Sequence):
+        sequence = sequence.current_item
+    if not isinstance(sequence, synthmenu.Sequence):
+        return
+    
+    step = sequence.items[position % sequence.length]
+    step.value = not step.value
+    
+    lcd_menu.draw()
+    
+    # NOTE: No touch midi out
 hardware.ttp.on_press = ttp_press
 
 async def touch_task() -> None:
@@ -132,90 +146,161 @@ async def touch_task() -> None:
         hardware.ttp.update()
         await asyncio.sleep(hardware.TASK_SLEEP)
 
+## Menu
+
+def update_sequencer_length(value: int, item: synthmenu.Item) -> None:
+    sequencer.length = value
+    for sequence_item in sequence_items:
+        sequence_item.length = value
+
+def update_sequencer_track(track: int, value: tuple) -> None:
+    if track > sequencer.tracks or track < 0:
+        return
+    for i, state in enumerate(value):
+        if state and not sequencer.has_note(
+            position=i,
+            track=track,
+        ):
+            sequencer.set_note(
+                position=i,
+                notenum=track+1,
+                track=track,
+            )
+        elif not state:
+            sequencer.remove_note(
+                position=i,
+                track=track
+            )
+
+steps = menu.get_enum(synthkeyboard.TimerStep)
+
+lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
+    synthmenu.Percentage(
+        title="Level",
+        default=0.25,
+        on_update=lambda value, item: menu.set_attribute(mixer.voice, 'level', value),
+    ),
+    synthmenu.Bool(
+        title="Active",
+        on_update=lambda value, item: menu.set_attribute(sequencer, 'active', value),
+    ),
+    pattern_group := synthmenu.Group("Pattern", tuple(
+        [
+            pattern_index := synthmenu.Number(
+                title="Index",
+                default=0,
+                step=1,
+                minimum=0,
+                maximum=15,
+                loop=True,
+                decimals=0,
+                on_update=lambda value, item: menu.load(pattern_group, item, value, 'pattern'),
+            ),
+            synthmenu.Action("Save", lambda: menu.save(pattern_group, pattern_index.value, 'pattern')),
+            synthmenu.Number(
+                title="BPM",
+                step=1,
+                default=120,
+                minimum=60,
+                maximum=240,
+                decimals=0,
+                on_update=lambda value, item: menu.set_attribute(sequencer, 'bpm', value),
+            ),
+            synthmenu.Number(
+                title="Length",
+                step=1,
+                default=16,
+                minimum=1,
+                maximum=16,
+                decimals=0,
+                on_update=update_sequencer_length,
+            ),
+            synthmenu.List(
+                title="Step",
+                items=tuple([item[0] for item in steps]),
+                on_update=lambda value, item: menu.set_attribute(sequencer, 'steps', steps[value][1]),
+            ),
+        ] + (sequence_items := [
+            synthmenu.Sequence(
+                title=voice.__class__.__name__,
+                length = sequencer.length,
+                on_update=lambda value, item, i=i: update_sequencer_track(i, value),
+            )
+            for i, voice in enumerate(voices)
+        ])
+    )),
+    voice_group := synthmenu.Group("Voice", tuple(
+        [
+            voice_index := synthmenu.Number(
+                title="Index",
+                default=0,
+                step=1,
+                minimum=0,
+                maximum=15,
+                loop=True,
+                decimals=0,
+                on_update=lambda value, item: menu.load(voice_group, item, value, 'voice'),
+            ),
+            synthmenu.Action("Save", lambda: menu.save(voice_group, voice_index.value, 'voice')),
+        ] + [
+            synthmenu.Group(voice.__class__.__name__, (
+                synthmenu.Mix(
+                    title="Mix",
+                    on_level_update=lambda value, item, voice=voice: menu.set_attribute(voice, 'amplitude', value),
+                    on_pan_update=lambda value, item, voice=voice: menu.set_attribute(voice, 'pan', value),
+                ),
+                synthmenu.Number(
+                    title="Tuning",
+                    default=0,
+                    step=1,
+                    minimum=-12,
+                    maximum=12,
+                    show_sign=True,
+                    decimals=0,
+                    on_update=lambda value, item, voice=voice: menu.set_attribute(voice, 'tune', value),
+                ),
+                synthmenu.Group("Envelope", (
+                    synthmenu.Percentage(
+                        title="Attack Level",
+                        default=1.0,
+                        on_update=lambda value, item, voice=voice: menu.set_attribute(voice, 'attack_level', value),
+                    ),
+                    synthmenu.Percentage(
+                        title="Decay Time",
+                        step=0.05,
+                        default=0.0,
+                        minimum=-1.0,
+                        maximum=1.0,
+                        show_sign=True,
+                        on_update=lambda value, item, voice=voice: menu.set_attribute(voice, 'decay_time', value)
+                    ),
+                )),
+            ))
+            for voice in voices
+        ]
+    )),
+    synthmenu.Action("Exit", menu.load_launcher),
+))
+
+# Perform a full update which will synchronize sequencer and voice properties
+
+lcd_menu.do_update()
+
 ## Controls
 
-def update_bpm():
-    global bpm
-    sequencer.bpm = bpm
-    hardware.lcd.cursor_position(13, 0)
-    hardware.lcd.message = "{:>3d}".format(bpm)
-def update_selected():
-    global alt_enc
-    hardware.lcd.cursor_position(11, 0)
-    hardware.lcd.message = ">" if alt_enc else "<"
-def increment_voice():
-    global voice, alt_enc
-    if alt_enc:
-        alt_enc = False
-        update_selected()
-    voice = (voice + 1) % sequencer.tracks
-    update_display()
-def decrement_voice():
-    global voice, alt_enc
-    if alt_enc:
-        alt_enc = False
-        update_selected()
-    voice = (voice - 1) % sequencer.tracks
-    update_display()
-def increment_bpm():
-    global bpm, alt_enc
-    if not alt_enc:
-        alt_enc = True
-        update_selected()
-    if bpm < 200:
-        bpm += 1
-        update_bpm()
-def decrement_bpm():
-    global bpm, alt_enc
-    if not alt_enc:
-        alt_enc = True
-        update_selected()
-    if bpm > 50:
-        bpm -= 1
-        update_bpm()
-def toggle_sequencer():
-    sequencer.active = not sequencer.active
-def clear_track():
-    for i in range(sequencer.length):
-        sequencer.remove_note(
-            position=i,
-            track=voice,
-        )
-    update_display()
-
-update_display()
-
-async def update_controls() -> None:
-    encoder_position = [encoder.position for encoder in hardware.encoders]
+async def controls_task():
     while True:
-        for i, encoder in enumerate(hardware.encoders):
-            position = encoder.position
-            if position > encoder_position[i]:
-                for j in range(position - encoder_position[i]):
-                    increment_voice() if not i else increment_bpm()
-            elif position < encoder_position[i]:
-                for j in range(encoder_position[i] - position):
-                    decrement_voice() if not i else decrement_bpm()
-            encoder_position[i] = position
-
-            hardware.buttons[i].update()
-
-            if hardware.buttons[i].rose and hardware.buttons[i].last_duration < 0.5: # short press
-                if i:
-                    toggle_sequencer()
-            elif hardware.buttons[i].rose: # long press
-                if not i:
-                    clear_track()
-                else:
-                    menu.load_launcher()
-
+        menu.handle_controls(lcd_menu)
         await asyncio.sleep(hardware.TASK_SLEEP)
+
+## Asyncio loop
 
 async def main():
     await asyncio.gather(
         asyncio.create_task(sequencer.update()),
         asyncio.create_task(touch_task()),
-        asyncio.create_task(update_controls()),
+        asyncio.create_task(midi_task()),
+        asyncio.create_task(controls_task()),
     )
 
 asyncio.run(main())

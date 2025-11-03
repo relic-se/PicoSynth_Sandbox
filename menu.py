@@ -47,7 +47,7 @@ def write_message(msg:str, delay:bool|float = False) -> None:
     if delay:
         time.sleep(delay if type(delay) is float else DELAY)
 
-def load_patch(menu:synthmenu.Menu, item:synthmenu.Item, value:int, prepend:str = 'patch') -> bool:
+def load(menu:synthmenu.Menu, item:synthmenu.Item, value:int, prepend:str = 'patch') -> bool:
     on_update = item.on_update
     item.on_update = None
     path = "/presets/{:s}-{:d}.json".format(prepend, value)
@@ -65,7 +65,7 @@ def load_patch(menu:synthmenu.Menu, item:synthmenu.Item, value:int, prepend:str 
     item.on_update = on_update
     return result
 
-def save_patch(menu:synthmenu.Menu, value:int, prepend:str = 'patch') -> bool:
+def save(menu:synthmenu.Menu, value:int, prepend:str = 'patch') -> bool:
     write_message("Saving...")
     path = "/presets/{:s}-{:d}.json".format(prepend, value)
     try:
