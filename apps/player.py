@@ -164,8 +164,9 @@ class Player():
         return self.audio_playing or self.midi_playing
 
     def _send(self, msg:MIDIMessage) -> None:
-        hardware.midi_usb.send(msg)
-        hardware.midi_uart.send(msg)
+        # NOTE: Assigning channel directly overrides `out_channel` property
+        hardware.midi_usb.send(msg, channel=msg.channel)
+        hardware.midi_uart.send(msg, channel=msg.channel)
         
     async def update(self) -> None:
         while True:
