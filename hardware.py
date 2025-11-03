@@ -110,12 +110,12 @@ def init() -> None:
     # Character LCD Menu
     lcd_gpio = tuple([digitalio.DigitalInOut(pin) for pin in lcd_pins])
     lcd = character_lcd.Character_LCD_Mono(
-        rs = lcd_gpio[0],
-        en = lcd_gpio[1],
-        db4 = lcd_gpio[2],
-        db5 = lcd_gpio[3],
-        db6 = lcd_gpio[4],
-        db7 = lcd_gpio[5],
+        reset_dio = lcd_gpio[0],
+        enable_dio = lcd_gpio[1],
+        d4_dio = lcd_gpio[2],
+        d5_dio = lcd_gpio[3],
+        d6_dio = lcd_gpio[4],
+        d7_dio = lcd_gpio[5],
         columns=COLUMNS,
         lines=ROWS,
     )
