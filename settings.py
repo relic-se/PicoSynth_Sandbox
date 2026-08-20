@@ -32,7 +32,6 @@ try:
                             value = bool(value)
                         globals()[name] = value
 except (OSError, ValueError) as e:
-    print(e)
     pass
 
 _group = None

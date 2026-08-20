@@ -23,7 +23,6 @@ from adafruit_midi.pitch_bend import PitchBend
 from adafruit_midi.midi_message import MIDIMessage, MIDIUnknownEvent
 
 import asyncio
-import board
 
 import hardware
 import menu
@@ -144,8 +143,8 @@ keyboard.on_voice_release = voice_release
 
 def midi_process_message(msg:MIDIMessage) -> None:
     if settings.midi_thru and not isinstance(msg, MIDIUnknownEvent):
-        hardware.midi_usb.send(msg, channel=msg.midi_channel)
-        hardware.midi_uart.send(msg, channel=msg.midi_channel)
+        hardware.midi_usb.send(msg, channel=msg.channel)
+        hardware.midi_uart.send(msg, channel=msg.channel)
         
     if settings.midi_channel is not None and 1 <= settings.midi_channel <= 16 and msg.channel != settings.midi_channel - 1:
         return
@@ -193,8 +192,8 @@ def ttp_press(i:int) -> None:
         keyboard.append(notenum)
     if settings.midi_touch_out:
         msg = NoteOn(notenum, channel=settings.midi_channel)
-        hardware.midi_uart.send(msg, channel=msg.midi_channel)
-        hardware.midi_usb.send(msg, channel=msg.midi_channel)
+        hardware.midi_uart.send(msg, channel=msg.channel)
+        hardware.midi_usb.send(msg, channel=msg.channel)
 hardware.ttp.on_press = ttp_press
 
 def ttp_release(i:int) -> None:
@@ -203,8 +202,8 @@ def ttp_release(i:int) -> None:
         keyboard.remove(notenum)
     if settings.midi_touch_out:
         msg = NoteOff(notenum, channel=settings.midi_channel)
-        hardware.midi_uart.send(msg, channel=msg.midi_channel)
-        hardware.midi_usb.send(msg, channel=msg.midi_channel)
+        hardware.midi_uart.send(msg, channel=msg.channel)
+        hardware.midi_usb.send(msg, channel=msg.channel)
 hardware.ttp.on_release = ttp_release
 
 async def touch_task() -> None:
