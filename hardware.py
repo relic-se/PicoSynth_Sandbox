@@ -84,10 +84,7 @@ def init() -> None:
     if usb_midi.ports:
         midi_usb = adafruit_midi.MIDI(
             midi_in=usb_midi.ports[0],
-            in_channel=0,
             midi_out=usb_midi.ports[1],
-            out_channel=0,
-            debug=False,
         )
 
     # UART MIDI
@@ -99,10 +96,7 @@ def init() -> None:
     )
     midi_uart = adafruit_midi.MIDI(
         midi_in=uart,
-        in_channel=0,
         midi_out=uart,
-        out_channel=0,
-        debug=False,
     )
 
     # Touch Keyboard Interface
@@ -207,3 +201,4 @@ def deinit() -> None:
     if spi is not None:
         spi.deinit()
         spi = None
+

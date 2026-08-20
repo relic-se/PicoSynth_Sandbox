@@ -74,8 +74,8 @@ def sequencer_press(notenum: int, velocity: float) -> None:
     voices[(notenum - 1) % len(voices)].press(velocity)
 
     msg = NoteOn(notenum, velocity=int(velocity * 127), channel=settings.midi_channel)
-    hardware.midi_uart.send(msg)
-    hardware.midi_usb.send(msg)
+    hardware.midi_uart.send(msg, channel=msg.midi_channel)
+    hardware.midi_usb.send(msg, channel=msg.midi_channel)
 sequencer.on_press = sequencer_press
 
 def sequencer_release(notenum):
@@ -85,17 +85,17 @@ def sequencer_release(notenum):
     voices[voice].release()
 
     # Send midi note off
-    msg = NoteOff(notenum)
-    hardware.midi_uart.send(msg)
-    hardware.midi_usb.send(msg)
+    msg = NoteOff(notenum, channel=settings.midi_channel)
+    hardware.midi_uart.send(msg, channel=msg.midi_channel)
+    hardware.midi_usb.send(msg, channel=msg.midi_channel)
 sequencer.on_release = sequencer_release
 
 ## USB & Hardware MIDI
 
 def midi_process_message(msg: MIDIMessage) -> None:
     if settings.midi_thru and not isinstance(msg, MIDIUnknownEvent):
-        hardware.midi_usb.send(msg)
-        hardware.midi_uart.send(msg)
+        hardware.midi_usb.send(msg, channel=msg.channel)
+        hardware.midi_uart.send(msg, channel=msg.channel)
 
     if settings.midi_channel is not None and 1 <= settings.midi_channel <= 16 and msg.channel != settings.midi_channel - 1:
         return
