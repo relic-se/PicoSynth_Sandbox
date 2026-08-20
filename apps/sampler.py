@@ -165,7 +165,7 @@ async def touch_task() -> None:
 
 ## Character LCD Menu
 
-sample_files = list(filter(lambda filename: filename.endswith(".wav"), os.listdir(DIR)))
+sample_files = list(filter(lambda filename: not filename.startswith(".") and filename.endswith(".wav"), os.listdir(DIR)))
 if not sample_files:
     menu.write_message("No samples!", True)
     menu.load_launcher()

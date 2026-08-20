@@ -21,7 +21,7 @@ def reset_device() -> None:
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
     microcontroller.reset()
 
-files = tuple(filter(lambda filename: filename.endswith(".py"), os.listdir(menu.APP_DIR)))
+files = tuple(filter(lambda filename: not filename.startswith(".") and filename.endswith(".py"), os.listdir(menu.APP_DIR)))
 
 apps = []
 for filename in files:
