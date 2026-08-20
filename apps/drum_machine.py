@@ -297,7 +297,7 @@ async def controls_task():
 
 async def main():
     await asyncio.gather(
-        asyncio.create_task(sequencer.update()),
+        asyncio.create_task(sequencer.update_async()),
         asyncio.create_task(touch_task()),
         asyncio.create_task(midi_task()),
         asyncio.create_task(controls_task()),
