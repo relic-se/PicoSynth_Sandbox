@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Unlicense
 
-import synthwaveform
+import relic_waveform
 import synthvoice.sample
 import synthkeyboard
 
@@ -174,7 +174,7 @@ def load_sample(index:int) -> None:
         voice.waveform = None
     gc.collect()
     path = DIR + "/" + sample_files[index % len(sample_files)]
-    waveform, sample_rate = synthwaveform.from_wav(path)
+    waveform, sample_rate = relic_waveform.from_wav(path)
     for voice in voices:
         voice.waveform = waveform
         voice.sample_rate = sample_rate
@@ -217,7 +217,7 @@ lcd_menu = Character_LCD_Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Me
         Waveform(
             title="Sample",
             items=tuple([
-                (menu.format_name(filename[:-4]), lambda filename=filename: synthwaveform.from_wav(DIR + "/" + filename)[0])
+                (menu.format_name(filename[:-4]), lambda filename=filename: relic_waveform.from_wav(DIR + "/" + filename)[0])
                 for filename in sample_files
             ]),
             on_waveform_update=lambda value, item: load_sample(value),

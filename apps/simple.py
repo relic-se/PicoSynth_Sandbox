@@ -4,7 +4,7 @@
 
 # Demonstration of dedicated voice without presets
 
-import synthwaveform
+import relic_waveform
 import synthvoice.oscillator
 import synthkeyboard
 
@@ -96,11 +96,11 @@ else:
 
 voices = [synthvoice.oscillator.Oscillator(synth) for i in range(VOICES)]
 
-waveform = synthwaveform.mix(
-    synthwaveform.saw(),
-    (synthwaveform.saw(frequency=2.0), 0.5),
-    (synthwaveform.saw(frequency=3.0), 0.25),
-    (synthwaveform.saw(frequency=4.0), 0.125)
+waveform = relic_waveform.mix(
+    relic_waveform.saw(),
+    (relic_waveform.saw(frequency=2.0), 0.5),
+    (relic_waveform.saw(frequency=3.0), 0.25),
+    (relic_waveform.saw(frequency=4.0), 0.125)
 )
 envelope = synthio.Envelope(attack_time=0.02, attack_level=1.0, decay_time=0.05, sustain_level=0.5, release_time=0.25)
 for voice in voices:

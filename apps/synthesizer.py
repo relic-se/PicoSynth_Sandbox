@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Unlicense
 
-import synthwaveform
+import relic_waveform
 import synthvoice.oscillator
 import synthkeyboard
 
@@ -300,11 +300,11 @@ lcd_menu = Character_LCD_Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Me
             Waveform(
                 title="Waveform",
                 items=(
-                    ("Sine", synthwaveform.sine),
-                    ("Saw", synthwaveform.saw),
-                    ("Triangle", synthwaveform.triangle),
-                    ("Square", synthwaveform.square),
-                    ("Noise", synthwaveform.noise),
+                    ("Sine", relic_waveform.sine),
+                    ("Saw", relic_waveform.saw),
+                    ("Triangle", relic_waveform.triangle),
+                    ("Square", relic_waveform.square),
+                    ("Noise", relic_waveform.noise),
                 ),
                 on_waveform_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'waveform', item.data),
                 on_loop_start_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'waveform_loop', (value, oscillators[i].waveform_loop[1])),
