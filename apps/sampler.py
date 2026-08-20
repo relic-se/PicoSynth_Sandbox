@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Unlicense
 
 import relic_waveform
-import synthvoice.sample
+from relic_synthvoice import Voice
+from relic_synthvoice.sample import Sample
 import synthkeyboard
 
 import audiomixer
@@ -57,7 +58,7 @@ synth = synthio.Synthesizer(
 )
 mixer.voice[0].play(synth)
 
-voices = tuple([synthvoice.sample.Sample(synth) for i in range(VOICES)])
+voices = tuple([Sample(synth) for i in range(VOICES)])
 
 async def voice_task() -> None:
     while True:
@@ -72,7 +73,7 @@ keyboard = synthkeyboard.Keyboard(
     root=48,
 )
 
-def voice_press(voice:synthvoice.Voice) -> None:
+def voice_press(voice:Voice) -> None:
     voices[voice.index].press(
         notenum=voice.note.notenum,
         velocity=voice.note.velocity,
@@ -80,7 +81,7 @@ def voice_press(voice:synthvoice.Voice) -> None:
     hardware.led.value = True
 keyboard.on_voice_press = voice_press
 
-def voice_release(voice:synthvoice.Voice) -> None:
+def voice_release(voice:Voice) -> None:
     voices[voice.index].release()
     hardware.led.value = False
 keyboard.on_voice_release = voice_release

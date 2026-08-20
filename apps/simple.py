@@ -5,7 +5,8 @@
 # Demonstration of dedicated voice without presets
 
 import relic_waveform
-import synthvoice.oscillator
+from relic_synthvoice import Voice
+from relic_synthvoice.oscillator import Oscillator
 import synthkeyboard
 
 import audiomixer
@@ -94,7 +95,7 @@ if EFFECTS:
 else:
     mixer.voice[0].play(synth)
 
-voices = [synthvoice.oscillator.Oscillator(synth) for i in range(VOICES)]
+voices = [Oscillator(synth) for i in range(VOICES)]
 
 waveform = relic_waveform.mix(
     relic_waveform.saw(),
@@ -122,7 +123,7 @@ keyboard = synthkeyboard.Keyboard(
     root=48,
 )
 
-def voice_press(voice:synthvoice.Voice) -> None:
+def voice_press(voice:Voice) -> None:
     voices[voice.index].press(
         notenum=voice.note.notenum,
         velocity=voice.note.velocity,
@@ -130,7 +131,7 @@ def voice_press(voice:synthvoice.Voice) -> None:
     hardware.led.value = True
 keyboard.on_voice_press = voice_press
 
-def voice_release(voice:synthvoice.Voice) -> None:
+def voice_release(voice:Voice) -> None:
     voices[voice.index].release()
     if not keyboard.notes:
         hardware.led.value = False

@@ -3,13 +3,14 @@
 # SPDX-License-Identifier: Unlicense
 
 import relic_waveform
-import synthvoice.oscillator
+from relic_synthvoice import Voice
+from relic_synthvoice.oscillator import Oscillator
 import synthkeyboard
 
 import audiomixer
 import synthio
 
-from relic_menumanager import Group, Number, String, Action, Percentage, List, Time
+from relic_menumanager import Item, Group, Number, String, Action, Percentage, List, Time
 from relic_menumanager.synthio import Mix, Tune, Waveform, ADSREnvelope
 from relic_menumanager.character_lcd import Character_LCD_Menu
 
@@ -93,7 +94,7 @@ if EFFECTS:
 else:
     mixer.voice[0].play(synth)
 
-oscillators = [synthvoice.oscillator.Oscillator(synth) for i in range(VOICES * OSCILLATORS)]
+oscillators = [Oscillator(synth) for i in range(VOICES * OSCILLATORS)]
 
 async def oscillator_task() -> None:
     while True:
@@ -123,7 +124,7 @@ def set_voice_type(value:int, item:Item = None) -> None:
     else:
         keyboard.max_voices = 1
 
-def voice_press(voice:synthvoice.Voice) -> None:
+def voice_press(voice:Voice) -> None:
     global voice_type, oscillators
     start = 0
     stop = OSCILLATORS
@@ -140,7 +141,7 @@ def voice_press(voice:synthvoice.Voice) -> None:
     hardware.led.value = True
 keyboard.on_voice_press = voice_press
 
-def voice_release(voice:synthvoice.Voice) -> None:
+def voice_release(voice:Voice) -> None:
     global voice_type, oscillators, synth
     if (voice_type == VoiceType.MONOPHONIC or voice_type == VoiceType.MONOPHONIC_ALL) and not keyboard.notes:
         synth.release_all()
