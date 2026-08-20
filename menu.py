@@ -6,8 +6,8 @@ import time
 import os
 import gc
 import supervisor
+from relic_keymanager import Arpeggiator, TimerStep, ArpeggiatorMode
 from relic_menumanager import Menu, Item, Group, Action, Bool, List, Number, Percentage
-import synthkeyboard
 import hardware
 
 DELAY = 0.5
@@ -154,9 +154,9 @@ def handle_controls(menu:Menu) -> None:
 
 # Premade Groups
 
-def get_arpeggiator_group(arpeggiator:synthkeyboard.Arpeggiator) -> Group:
-    arpeggiator_steps = get_enum(synthkeyboard.TimerStep)
-    arpeggiator_modes = get_enum(synthkeyboard.ArpeggiatorMode)
+def get_arpeggiator_group(arpeggiator:Arpeggiator) -> Group:
+    arpeggiator_steps = get_enum(TimerStep)
+    arpeggiator_modes = get_enum(ArpeggiatorMode)
     return Group("Arp", (
         Bool(
             title="Enabled",

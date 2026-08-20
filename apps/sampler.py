@@ -2,10 +2,10 @@
 #
 # SPDX-License-Identifier: Unlicense
 
-import relic_waveform
+from relic_keymanager import Keyboard, Arpeggiator, TimerStep, ArpeggiatorMode
 from relic_synthvoice import Voice
 from relic_synthvoice.sample import Sample
-import synthkeyboard
+import relic_waveform
 
 import audiomixer
 import synthio
@@ -68,7 +68,7 @@ async def voice_task() -> None:
 
 ## Keyboard Manager
 
-keyboard = synthkeyboard.Keyboard(
+keyboard = Keyboard(
     max_voices=VOICES,
     root=48,
 )
@@ -86,9 +86,9 @@ def voice_release(voice:Voice) -> None:
     hardware.led.value = False
 keyboard.on_voice_release = voice_release
 
-keyboard.arpeggiator = synthkeyboard.Arpeggiator(
-    steps=synthkeyboard.TimerStep.QUARTER,
-    mode=synthkeyboard.ArpeggiatorMode.UP,
+keyboard.arpeggiator = Arpeggiator(
+    steps=TimerStep.QUARTER,
+    mode=ArpeggiatorMode.UP,
 )
 
 ## USB & Hardware MIDI

@@ -10,11 +10,11 @@ import board
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
 
-import synthkeyboard
-from relic_synthvoice.percussive import *
+from relic_keymanager import Sequencer, TimerStep
 from relic_menumanager import Group, Item, Percentage, Bool, Number, Action, List
 from relic_menumanager.synthio import Sequence, Mix
 from relic_menumanager.character_lcd import Character_LCD_Menu
+from relic_synthvoice.percussive import *
 
 import adafruit_midi
 from adafruit_midi.note_on import NoteOn
@@ -63,12 +63,12 @@ voices = (
 
 ## Sequencer
 
-sequencer = synthkeyboard.Sequencer(
+sequencer = Sequencer(
     length=16,
     tracks=len(voices),
     bpm=120,
 )
-sequencer.steps = synthkeyboard.TimerStep.SIXTEENTH
+sequencer.steps = TimerStep.SIXTEENTH
 
 def sequencer_press(notenum: int, velocity: float) -> None:
     voices[(notenum - 1) % len(voices)].press(velocity)
@@ -173,7 +173,7 @@ def update_sequencer_track(track: int, value: tuple) -> None:
                 track=track
             )
 
-steps = menu.get_enum(synthkeyboard.TimerStep)
+steps = menu.get_enum(TimerStep)
 
 lcd_menu = Character_LCD_Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
     Percentage(

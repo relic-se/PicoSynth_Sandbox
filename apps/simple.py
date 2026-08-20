@@ -4,10 +4,10 @@
 
 # Demonstration of dedicated voice without presets
 
-import relic_waveform
+from relic_keymanager import Keyboard
 from relic_synthvoice import Voice
 from relic_synthvoice.oscillator import Oscillator
-import synthkeyboard
+import relic_waveform
 
 import audiomixer
 import synthio
@@ -118,7 +118,7 @@ async def synth_task() -> None:
 
 ## Keyboard Manager
 
-keyboard = synthkeyboard.Keyboard(
+keyboard = Keyboard(
     max_voices=VOICES,
     root=48,
 )
