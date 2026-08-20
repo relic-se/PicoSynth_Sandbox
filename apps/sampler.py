@@ -32,7 +32,7 @@ import settings
 
 hardware.init()
 
-VOICES = 12 if board.board_id == "raspberry_pi_pico2" else 6
+VOICES = 12 if hardware.is_rp2350() else 6
 
 DIR = "/sd/samples"
 try:

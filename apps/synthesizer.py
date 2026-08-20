@@ -32,7 +32,7 @@ import settings
 
 hardware.init()
 
-if board.board_id == "raspberry_pi_pico2":
+if hardware.is_rp2350():
     try:
         import audiodelays
     except ImportError:
@@ -46,8 +46,8 @@ if board.board_id == "raspberry_pi_pico2":
 else:
     EFFECTS = 0
 
-VOICES = 6 if board.board_id == "raspberry_pi_pico2" else 3
-OSCILLATORS = 2 if board.board_id == "raspberry_pi_pico2" else 1
+VOICES = 6 if hardware.is_rp2350() else 3
+OSCILLATORS = 2 if hardware.is_rp2350() else 1
 
 ## Audio Output + Synthesizer
 

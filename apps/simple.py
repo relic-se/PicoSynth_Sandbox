@@ -31,9 +31,9 @@ import settings
 
 hardware.init()
 
-VOICES = 6 if board.board_id == "raspberry_pi_pico2" else 4
+VOICES = 6 if hardware.is_rp2350() else 4
 
-if board.board_id == "raspberry_pi_pico2":
+if hardware.is_rp2350():
     try:
         import audiodelays
     except ImportError:

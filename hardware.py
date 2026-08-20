@@ -38,9 +38,15 @@ encoder_pins = (
 )
 spi_clock, spi_mosi, spi_miso, spi_cs = board.GP2, board.GP3, board.GP0, board.GP1
 
-if board.board_id == "raspberry_pi_pico":
+def is_rp2350() -> bool:
+    return os.uname().sysname.startswith("rp2350")
+
+def is_rp2040() -> bool:
+    return os.uname().sysname.startswith("rp2040")
+
+if is_rp2040():
     microcontroller.cpu.frequency = 250_000_000
-elif board.board_id == "raspberry_pi_pico2":
+elif is_rp2350():
     BUFFER_SIZE = 8192
     SAMPLE_RATE = 48000
     microcontroller.cpu.frequency = 300_000_000

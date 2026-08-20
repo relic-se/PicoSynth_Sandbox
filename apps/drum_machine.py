@@ -25,7 +25,7 @@ import hardware
 import menu
 import settings
 
-if board.board_id == "raspberry_pi_pico":
+if hardware.is_rp2040():
     hardware.SAMPLE_RATE = 22050
     hardware.BUFFER_SIZE = 2048
 
