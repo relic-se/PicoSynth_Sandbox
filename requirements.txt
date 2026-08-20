@@ -1,11 +1,12 @@
 asyncio
 
-Adafruit-CircuitPython-Debouncer
-Adafruit-CircuitPython-CharacterLCD
-Adafruit-CircuitPython-Midi
+adafruit_debouncer
+adafruit_character_lcd
+adafruit_midi
+adafruit_midi_parser
 
-CircuitPython-TTP229
+ttp229
 CircuitPython-SynthMenu
-CircuitPython-SynthKeyboard
-CircuitPython-SynthWaveform
-CircuitPython-SynthVoice
+relic_keymanager
+relic_waveform
+relic_synthvoice
