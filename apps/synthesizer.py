@@ -536,7 +536,7 @@ async def controls_task():
 
 async def main():
     await asyncio.gather(
-        asyncio.create_task(keyboard.arpeggiator.update()),
+        asyncio.create_task(keyboard.arpeggiator.update_async()),
         asyncio.create_task(oscillator_task()),
         asyncio.create_task(touch_task()),
         asyncio.create_task(midi_task()),

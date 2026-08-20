@@ -39,11 +39,11 @@ encoder_pins = (
 spi_clock, spi_mosi, spi_miso, spi_cs = board.GP2, board.GP3, board.GP0, board.GP1
 
 if board.board_id == "raspberry_pi_pico":
-    microcontroller.cpu.frequency = 250000000
+    microcontroller.cpu.frequency = 250_000_000
 elif board.board_id == "raspberry_pi_pico2":
     BUFFER_SIZE = 8192
     SAMPLE_RATE = 48000
-    microcontroller.cpu.frequency = 300000000
+    microcontroller.cpu.frequency = 300_000_000
 
 led = None
 audio = None
