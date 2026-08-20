@@ -32,16 +32,19 @@ import settings
 
 hardware.init()
 
-try:
-    import audiodelays
-except ImportError:
-    EFFECTS = 0
+if board.board_id == "raspberry_pi_pico2":
+    try:
+        import audiodelays
+    except ImportError:
+        EFFECTS = 0
+    else:
+        EFFECTS = 1
+        EFFECTS_BUFFER = 2048
+        DELAY_LENGTH = 250
+        MAX_DELAY = DELAY_LENGTH * 4
+        CHORUS_DELAY = 80
 else:
-    EFFECTS = 1
-    EFFECTS_BUFFER = 2048
-    DELAY_LENGTH = 250
-    MAX_DELAY = DELAY_LENGTH * 4
-    CHORUS_DELAY = 80
+    EFFECTS = 0
 
 VOICES = 6 if board.board_id == "raspberry_pi_pico2" else 3
 OSCILLATORS = 2 if board.board_id == "raspberry_pi_pico2" else 1

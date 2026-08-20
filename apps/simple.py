@@ -33,15 +33,18 @@ hardware.init()
 
 VOICES = 6 if board.board_id == "raspberry_pi_pico2" else 4
 
-try:
-    import audiodelays
-except ImportError:
-    EFFECTS = 0
+if board.board_id == "raspberry_pi_pico2":
+    try:
+        import audiodelays
+    except ImportError:
+        EFFECTS = 0
+    else:
+        EFFECTS = 1
+        EFFECTS_BUFFER = 1024
+        DELAY_LENGTH = 250
+        CHORUS_DELAY = 50
 else:
-    EFFECTS = 1
-    EFFECTS_BUFFER = 1024
-    DELAY_LENGTH = 250
-    CHORUS_DELAY = 50
+    EFFECTS = 0
 
 ## Audio Output + Synthesizer
 
