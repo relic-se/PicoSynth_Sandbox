@@ -2,8 +2,8 @@ import os
 import time
 import microcontroller
 
-import synthmenu
-import synthmenu.character_lcd
+from relic_menumanager import Action, Group
+from relic_menumanager.character_lcd import Character_LCD_Menu
 
 import hardware
 import menu
@@ -21,7 +21,7 @@ def reset_device() -> None:
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
     microcontroller.reset()
 
-files = tuple(filter(lambda filename: filename.endswith(".py"), os.listdir(menu.APP_DIR)))
+files = tuple(filter(lambda filename: not filename.startswith(".") and filename.endswith(".py"), os.listdir(menu.APP_DIR)))
 
 apps = []
 for filename in files:
@@ -30,14 +30,14 @@ for filename in files:
     for i in range(len(title)):
         title[i] = title[i][0].upper() + title[i][1:]
     title = " ".join(title)
-    apps.append(synthmenu.Action(title, lambda filename=filename: menu.load_app(filename)))
+    apps.append(Action(title, lambda filename=filename: menu.load_app(filename)))
 
-lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Launcher", (
-    synthmenu.Group("Apps", tuple(apps)),
+lcd_menu = Character_LCD_Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Launcher", (
+    Group("Apps", tuple(apps)),
     settings.group(),
-    synthmenu.Group("Tools", (
-        synthmenu.Action("Bootloader", enter_bootloader),
-        synthmenu.Action("Reset", reset_device),
+    Group("Tools", (
+        Action("Bootloader", enter_bootloader),
+        Action("Reset", reset_device),
     ))
 ))
 

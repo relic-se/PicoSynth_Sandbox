@@ -5,15 +5,16 @@
 import audiomixer
 import synthio
 import asyncio
-import os
 import board
 
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
 
-import synthkeyboard
-import synthvoice.percussive
-import synthmenu.character_lcd
+from relic_keymanager import Sequencer, TimerStep
+from relic_menumanager import Group, Item, Percentage, Bool, Number, Action, List
+from relic_menumanager.synthio import Sequence, Mix
+from relic_menumanager.character_lcd import Character_LCD_Menu
+from relic_synthvoice.percussive import *
 
 import adafruit_midi
 from adafruit_midi.note_on import NoteOn
@@ -24,7 +25,7 @@ import hardware
 import menu
 import settings
 
-if board.board_id == "raspberry_pi_pico":
+if hardware.is_rp2040():
     hardware.SAMPLE_RATE = 22050
     hardware.BUFFER_SIZE = 2048
 
@@ -49,25 +50,25 @@ synth = synthio.Synthesizer(
 mixer.voice[0].play(synth)
 
 voices = (
-    synthvoice.percussive.Kick(synth),
-    synthvoice.percussive.Snare(synth),
-    synthvoice.percussive.ClosedHat(synth),
-    synthvoice.percussive.OpenHat(synth),
-    synthvoice.percussive.FloorTom(synth),
-    synthvoice.percussive.MidTom(synth),
-    synthvoice.percussive.HighTom(synth),
-    synthvoice.percussive.Ride(synth),
+    Kick(synth),
+    Snare(synth),
+    ClosedHat(synth),
+    OpenHat(synth),
+    FloorTom(synth),
+    MidTom(synth),
+    HighTom(synth),
+    Ride(synth),
 )
 # No update task required
 
 ## Sequencer
 
-sequencer = synthkeyboard.Sequencer(
+sequencer = Sequencer(
     length=16,
     tracks=len(voices),
     bpm=120,
 )
-sequencer.steps = synthkeyboard.TimerStep.SIXTEENTH
+sequencer.steps = TimerStep.SIXTEENTH
 
 def sequencer_press(notenum: int, velocity: float) -> None:
     voices[(notenum - 1) % len(voices)].press(velocity)
@@ -128,9 +129,9 @@ def ttp_press(position:int) -> None:
         return
     
     sequence = lcd_menu.selected
-    if isinstance(sequence, synthmenu.Group) and not isinstance(sequence, synthmenu.Sequence):
+    if isinstance(sequence, Group) and not isinstance(sequence, Sequence):
         sequence = sequence.current_item
-    if not isinstance(sequence, synthmenu.Sequence):
+    if not isinstance(sequence, Sequence):
         return
     
     step = sequence.items[position % sequence.length]
@@ -148,7 +149,7 @@ async def touch_task() -> None:
 
 ## Menu
 
-def update_sequencer_length(value: int, item: synthmenu.Item) -> None:
+def update_sequencer_length(value: int, item: Item) -> None:
     sequencer.length = value
     for sequence_item in sequence_items:
         sequence_item.length = value
@@ -172,21 +173,21 @@ def update_sequencer_track(track: int, value: tuple) -> None:
                 track=track
             )
 
-steps = menu.get_enum(synthkeyboard.TimerStep)
+steps = menu.get_enum(TimerStep)
 
-lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
-    synthmenu.Percentage(
+lcd_menu = Character_LCD_Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
+    Percentage(
         title="Level",
         default=0.25,
         on_update=lambda value, item: menu.set_attribute(mixer.voice, 'level', value),
     ),
-    synthmenu.Bool(
+    Bool(
         title="Active",
         on_update=lambda value, item: menu.set_attribute(sequencer, 'active', value),
     ),
-    pattern_group := synthmenu.Group("Pattern", tuple(
+    pattern_group := Group("Pattern", tuple(
         [
-            pattern_index := synthmenu.Number(
+            pattern_index := Number(
                 title="Index",
                 default=0,
                 step=1,
@@ -196,8 +197,8 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                 decimals=0,
                 on_update=lambda value, item: menu.load(pattern_group, item, value, 'pattern'),
             ),
-            synthmenu.Action("Save", lambda: menu.save(pattern_group, pattern_index.value, 'pattern')),
-            synthmenu.Number(
+            Action("Save", lambda: menu.save(pattern_group, pattern_index.value, 'pattern')),
+            Number(
                 title="BPM",
                 step=1,
                 default=120,
@@ -206,7 +207,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                 decimals=0,
                 on_update=lambda value, item: menu.set_attribute(sequencer, 'bpm', value),
             ),
-            synthmenu.Number(
+            Number(
                 title="Length",
                 step=1,
                 default=16,
@@ -215,13 +216,13 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                 decimals=0,
                 on_update=update_sequencer_length,
             ),
-            synthmenu.List(
+            List(
                 title="Step",
                 items=tuple([item[0] for item in steps]),
                 on_update=lambda value, item: menu.set_attribute(sequencer, 'steps', steps[value][1]),
             ),
         ] + (sequence_items := [
-            synthmenu.Sequence(
+            Sequence(
                 title=voice.__class__.__name__,
                 length = sequencer.length,
                 on_update=lambda value, item, i=i: update_sequencer_track(i, value),
@@ -229,9 +230,9 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
             for i, voice in enumerate(voices)
         ])
     )),
-    voice_group := synthmenu.Group("Voice", tuple(
+    voice_group := Group("Voice", tuple(
         [
-            voice_index := synthmenu.Number(
+            voice_index := Number(
                 title="Index",
                 default=0,
                 step=1,
@@ -241,15 +242,15 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                 decimals=0,
                 on_update=lambda value, item: menu.load(voice_group, item, value, 'voice'),
             ),
-            synthmenu.Action("Save", lambda: menu.save(voice_group, voice_index.value, 'voice')),
+            Action("Save", lambda: menu.save(voice_group, voice_index.value, 'voice')),
         ] + [
-            synthmenu.Group(voice.__class__.__name__, (
-                synthmenu.Mix(
+            Group(voice.__class__.__name__, (
+                Mix(
                     title="Mix",
                     on_level_update=lambda value, item, voice=voice: menu.set_attribute(voice, 'amplitude', value),
                     on_pan_update=lambda value, item, voice=voice: menu.set_attribute(voice, 'pan', value),
                 ),
-                synthmenu.Number(
+                Number(
                     title="Tuning",
                     default=0,
                     step=1,
@@ -259,13 +260,13 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     decimals=0,
                     on_update=lambda value, item, voice=voice: menu.set_attribute(voice, 'tune', value),
                 ),
-                synthmenu.Group("Envelope", (
-                    synthmenu.Percentage(
+                Group("Envelope", (
+                    Percentage(
                         title="Attack Level",
                         default=1.0,
                         on_update=lambda value, item, voice=voice: menu.set_attribute(voice, 'attack_level', value),
                     ),
-                    synthmenu.Percentage(
+                    Percentage(
                         title="Decay Time",
                         step=0.05,
                         default=0.0,
@@ -279,7 +280,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
             for voice in voices
         ]
     )),
-    synthmenu.Action("Exit", menu.load_launcher),
+    Action("Exit", menu.load_launcher),
 ))
 
 # Perform a full update which will synchronize sequencer and voice properties

@@ -38,12 +38,18 @@ encoder_pins = (
 )
 spi_clock, spi_mosi, spi_miso, spi_cs = board.GP2, board.GP3, board.GP0, board.GP1
 
-if board.board_id == "raspberry_pi_pico":
-    microcontroller.cpu.frequency = 250000000
-elif board.board_id == "raspberry_pi_pico2":
+def is_rp2350() -> bool:
+    return os.uname().sysname.startswith("rp2350")
+
+def is_rp2040() -> bool:
+    return os.uname().sysname.startswith("rp2040")
+
+if is_rp2040():
+    microcontroller.cpu.frequency = 250_000_000
+elif is_rp2350():
     BUFFER_SIZE = 8192
     SAMPLE_RATE = 48000
-    microcontroller.cpu.frequency = 300000000
+    microcontroller.cpu.frequency = 300_000_000
 
 led = None
 audio = None
@@ -110,12 +116,12 @@ def init() -> None:
     # Character LCD Menu
     lcd_gpio = tuple([digitalio.DigitalInOut(pin) for pin in lcd_pins])
     lcd = character_lcd.Character_LCD_Mono(
-        rs = lcd_gpio[0],
-        en = lcd_gpio[1],
-        db4 = lcd_gpio[2],
-        db5 = lcd_gpio[3],
-        db6 = lcd_gpio[4],
-        db7 = lcd_gpio[5],
+        reset_dio = lcd_gpio[0],
+        enable_dio = lcd_gpio[1],
+        d4_dio = lcd_gpio[2],
+        d5_dio = lcd_gpio[3],
+        d6_dio = lcd_gpio[4],
+        d7_dio = lcd_gpio[5],
         columns=COLUMNS,
         lines=ROWS,
     )

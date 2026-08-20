@@ -2,14 +2,17 @@
 #
 # SPDX-License-Identifier: Unlicense
 
-import synthwaveform
-import synthvoice.sample
-import synthkeyboard
+from relic_keymanager import Keyboard, Arpeggiator, TimerStep, ArpeggiatorMode
+from relic_synthvoice import Voice
+from relic_synthvoice.sample import Sample
+import relic_waveform
 
 import audiomixer
 import synthio
 
-import synthmenu.character_lcd
+from relic_menumanager import Group, Number, String, Action, Percentage, List, Bool, Time
+from relic_menumanager.synthio import Waveform, Mix, Tune, ADSREnvelope
+from relic_menumanager.character_lcd import Character_LCD_Menu
 
 import adafruit_midi
 from adafruit_midi.note_on import NoteOn
@@ -19,7 +22,6 @@ from adafruit_midi.pitch_bend import PitchBend
 from adafruit_midi.midi_message import MIDIMessage, MIDIUnknownEvent
 
 import asyncio
-import time
 import os
 import board
 import gc
@@ -30,7 +32,7 @@ import settings
 
 hardware.init()
 
-VOICES = 12 if board.board_id == "raspberry_pi_pico2" else 6
+VOICES = 12 if hardware.is_rp2350() else 6
 
 DIR = "/sd/samples"
 try:
@@ -56,7 +58,7 @@ synth = synthio.Synthesizer(
 )
 mixer.voice[0].play(synth)
 
-voices = tuple([synthvoice.sample.Sample(synth) for i in range(VOICES)])
+voices = tuple([Sample(synth) for i in range(VOICES)])
 
 async def voice_task() -> None:
     while True:
@@ -66,12 +68,12 @@ async def voice_task() -> None:
 
 ## Keyboard Manager
 
-keyboard = synthkeyboard.Keyboard(
+keyboard = Keyboard(
     max_voices=VOICES,
     root=48,
 )
 
-def voice_press(voice:synthvoice.Voice) -> None:
+def voice_press(voice:Voice) -> None:
     voices[voice.index].press(
         notenum=voice.note.notenum,
         velocity=voice.note.velocity,
@@ -79,14 +81,14 @@ def voice_press(voice:synthvoice.Voice) -> None:
     hardware.led.value = True
 keyboard.on_voice_press = voice_press
 
-def voice_release(voice:synthvoice.Voice) -> None:
+def voice_release(voice:Voice) -> None:
     voices[voice.index].release()
     hardware.led.value = False
 keyboard.on_voice_release = voice_release
 
-keyboard.arpeggiator = synthkeyboard.Arpeggiator(
-    steps=synthkeyboard.TimerStep.QUARTER,
-    mode=synthkeyboard.ArpeggiatorMode.UP,
+keyboard.arpeggiator = Arpeggiator(
+    steps=TimerStep.QUARTER,
+    mode=ArpeggiatorMode.UP,
 )
 
 ## USB & Hardware MIDI
@@ -163,7 +165,7 @@ async def touch_task() -> None:
 
 ## Character LCD Menu
 
-sample_files = list(filter(lambda filename: filename.endswith(".wav"), os.listdir(DIR)))
+sample_files = list(filter(lambda filename: not filename.startswith(".") and filename.endswith(".wav"), os.listdir(DIR)))
 if not sample_files:
     menu.write_message("No samples!", True)
     menu.load_launcher()
@@ -173,14 +175,14 @@ def load_sample(index:int) -> None:
         voice.waveform = None
     gc.collect()
     path = DIR + "/" + sample_files[index % len(sample_files)]
-    waveform, sample_rate = synthwaveform.from_wav(path)
+    waveform, sample_rate = relic_waveform.from_wav(path)
     for voice in voices:
         voice.waveform = waveform
         voice.sample_rate = sample_rate
 
-lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
-    synthmenu.Group("Patch", (
-        patch := synthmenu.Number(
+lcd_menu = Character_LCD_Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
+    Group("Patch", (
+        patch := Number(
             title="Index",
             default=0,
             step=1,
@@ -190,50 +192,50 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
             decimals=0,
             on_update=lambda value, item: menu.load(lcd_menu, item, value, 'sampler'),
         ),
-        synthmenu.String("Name"),
-        synthmenu.Action("Save", lambda: menu.save(lcd_menu, patch.value, 'sampler')),
+        String("Name"),
+        Action("Save", lambda: menu.save(lcd_menu, patch.value, 'sampler')),
     )),
-    synthmenu.Group("Audio", (
-        synthmenu.Percentage(
+    Group("Audio", (
+        Percentage(
             title="Level",
             default=0.25,
             on_update=lambda value, item: menu.set_attribute(mixer.voice, 'level', value),
         ),
     )),
-    synthmenu.Group("Keys", (
-        synthmenu.List(
+    Group("Keys", (
+        List(
             title="Priority",
             items=("High", "Low", "Last"),
             on_update=lambda value, item: menu.set_attribute(keyboard, 'mode', value),
         ),
-        synthmenu.Bool(
+        Bool(
             title="Monophonic",
             on_update=lambda value, item: menu.set_attribute(keyboard, 'max_voices', 1 if value else VOICES),
         ),
         menu.get_arpeggiator_group(keyboard.arpeggiator),
     )),
-    synthmenu.Group("Voice", (
-        synthmenu.Waveform(
+    Group("Voice", (
+        Waveform(
             title="Sample",
             items=tuple([
-                (menu.format_name(filename[:-4]), lambda filename=filename: synthwaveform.from_wav(DIR + "/" + filename)[0])
+                (menu.format_name(filename[:-4]), lambda filename=filename: relic_waveform.from_wav(DIR + "/" + filename)[0])
                 for filename in sample_files
             ]),
             on_waveform_update=lambda value, item: load_sample(value),
             on_loop_start_update=lambda value, item: menu.set_attribute(voices, 'waveform_loop', (value, voices[0].waveform_loop[1])),
             on_loop_end_update=lambda value, item: menu.set_attribute(voices, 'waveform_loop', (voices[0].waveform_loop[0], value)),
         ),
-        synthmenu.Bool(
+        Bool(
             title="Looping",
             default=True,
             on_update=lambda value, item: menu.set_attribute(voices, 'looping', value),
         ),
-        synthmenu.Mix(
+        Mix(
             title="Mix",
             on_level_update=lambda value, item: menu.set_attribute(voices, 'amplitude', value),
             on_pan_update=lambda value, item: menu.set_attribute(voices, 'pan', value),
         ),
-        synthmenu.Tune(
+        Tune(
             title="Tuning",
             on_coarse_update=lambda value, item: menu.set_attribute(voices, 'coarse_tune', value),
             on_fine_update=lambda value, item: menu.set_attribute(voices, 'fine_tune', value),
@@ -242,7 +244,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
             on_slew_update=lambda value, item: menu.set_attribute(voices, 'pitch_slew', value),
             on_slew_time_update=lambda value, item: menu.set_attribute(voices, 'pitch_slew_time', value),
         ),
-        synthmenu.ADSREnvelope(
+        ADSREnvelope(
             title="Envelope",
             on_attack_time_update=lambda value, item: menu.set_attribute(voices, 'attack_time', value),
             on_attack_level_update=lambda value, item: menu.set_attribute(voices, 'attack_level', value),
@@ -250,18 +252,18 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
             on_sustain_level_update=lambda value, item: menu.set_attribute(voices, 'sustain_level', value),
             on_release_time_update=lambda value, item: menu.set_attribute(voices, 'release_time', value),
         ),
-        synthmenu.Percentage(
+        Percentage(
             title="Velocity",
             default=1.0,
             on_update=lambda value, item: menu.set_attribute(voices, 'velocity_amount', value),
         ),
-        synthmenu.Group("Filter", (
-            synthmenu.List(
+        Group("Filter", (
+            List(
                 title="Type",
                 items=("Low Pass", "High Pass", "Band Pass"),
                 on_update=lambda value, item: menu.set_attribute(voices, 'filter_type', value),
             ),
-            synthmenu.Number(
+            Number(
                 title="Frequency",
                 default=1.0,
                 step=0.01,
@@ -272,7 +274,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                 append="hz",
                 on_update=lambda value, item: menu.set_attribute(voices, 'filter_frequency', value),
             ),
-            synthmenu.Number(
+            Number(
                 title="Resonance",
                 default=0.0,
                 step=0.01,
@@ -282,12 +284,12 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                 decimals=3,
                 on_update=lambda value, item: menu.set_attribute(voices, 'filter_resonance', value),
             ),
-            synthmenu.Group("Envelope", (
-                synthmenu.Time(
+            Group("Envelope", (
+                Time(
                     title="Attack",
                     on_update=lambda value, item: menu.set_attribute(voices, 'filter_attack_time', value),
                 ),
-                synthmenu.Number(
+                Number(
                     title="Amount",
                     default=0,
                     step=10,
@@ -296,13 +298,13 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     append="hz",
                     on_update=lambda value, item: menu.set_attribute(voices, 'filter_amount', value),
                 ),
-                synthmenu.Time(
+                Time(
                     title="Release",
                     on_update=lambda value, item: menu.set_attribute(voices, 'filter_release_time', value),
                 ),
             )),
-            synthmenu.Group("LFO", (
-                synthmenu.Number(
+            Group("LFO", (
+                Number(
                     "Depth",
                     default=0.0,
                     step=0.01,
@@ -313,7 +315,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     append="hz",
                     on_update=lambda value, item: menu.set_attribute(voices, 'filter_depth', value),
                 ),
-                synthmenu.Number(
+                Number(
                     "Rate",
                     step=0.01,
                     maximum=32.0,
@@ -321,7 +323,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     append="hz",
                     on_update=lambda value, item: menu.set_attribute(voices, 'filter_rate', value),
                 ),
-                synthmenu.Time(
+                Time(
                     "Delay",
                     step=0.01,
                     minimum=0.0,
@@ -330,13 +332,13 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                 ),
             )),
         )),
-        synthmenu.Group("Mod", (
-            synthmenu.Group("Tremolo", (
-                synthmenu.Percentage(
+        Group("Mod", (
+            Group("Tremolo", (
+                Percentage(
                     title="Depth",
                     on_update=lambda value, item: menu.set_attribute(voices, 'tremolo_depth', value / 2),
                 ),
-                synthmenu.Number(
+                Number(
                     title="Rate",
                     step=0.01,
                     maximum=32.0,
@@ -344,7 +346,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     append="hz",
                     on_update=lambda value, item: menu.set_attribute(voices, 'tremolo_rate', value),
                 ),
-                synthmenu.Time(
+                Time(
                     title="Delay",
                     step=0.01,
                     minimum=0.0,
@@ -352,8 +354,8 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     on_update=lambda value, item: menu.set_attribute(voices, 'tremolo_delay', value),
                 ),
             )),
-            synthmenu.Group("Vibrato", (
-                synthmenu.Number(
+            Group("Vibrato", (
+                Number(
                     title="Depth",
                     default=0,
                     step=10,
@@ -363,7 +365,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     append=" cents",
                     on_update=lambda value, item: menu.set_attribute(voices, 'vibrato_depth', value / 1200),
                 ),
-                synthmenu.Number(
+                Number(
                     title="Rate",
                     step=0.01,
                     maximum=32.0,
@@ -371,7 +373,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     append="hz",
                     on_update=lambda value, item: menu.set_attribute(voices, 'vibrato_rate', value),
                 ),
-                synthmenu.Time(
+                Time(
                     title="Delay",
                     step=0.01,
                     minimum=0.0,
@@ -379,12 +381,12 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     on_update=lambda value, item: menu.set_attribute(voices, 'vibrato_delay', value),
                 ),
             )),
-            synthmenu.Group("Pan", (
-                synthmenu.Percentage(
+            Group("Pan", (
+                Percentage(
                     title="Depth",
                     on_update=lambda value, item: menu.set_attribute(voices, 'pan_depth', value),
                 ),
-                synthmenu.Number(
+                Number(
                     title="Rate",
                     step=0.01,
                     maximum=32.0,
@@ -392,7 +394,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     append="hz",
                     on_update=lambda value, item: menu.set_attribute(voices, 'pan_rate', value),
                 ),
-                synthmenu.Time(
+                Time(
                     title="Delay",
                     step=0.01,
                     minimum=0.0,
@@ -402,7 +404,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
             )),
         )),
     )),
-    synthmenu.Action("Exit", menu.load_launcher),
+    Action("Exit", menu.load_launcher),
 ))
 
 # Perform a full update which will synchronize oscillator properties
@@ -420,7 +422,7 @@ async def controls_task():
 
 async def main():
     await asyncio.gather(
-        asyncio.create_task(keyboard.arpeggiator.update()),
+        asyncio.create_task(keyboard.arpeggiator.update_async()),
         asyncio.create_task(voice_task()),
         asyncio.create_task(touch_task()),
         asyncio.create_task(midi_task()),

@@ -4,14 +4,16 @@
 
 # Demonstration of dedicated voice without presets
 
-import synthwaveform
-import synthvoice.oscillator
-import synthkeyboard
+from relic_keymanager import Keyboard
+from relic_synthvoice import Voice
+from relic_synthvoice.oscillator import Oscillator
+import relic_waveform
 
 import audiomixer
 import synthio
 
-import synthmenu.character_lcd
+from relic_menumanager import Percentage, Action
+from relic_menumanager.character_lcd import Character_LCD_Menu
 
 import adafruit_midi
 from adafruit_midi.note_on import NoteOn
@@ -29,17 +31,20 @@ import settings
 
 hardware.init()
 
-VOICES = 6 if board.board_id == "raspberry_pi_pico2" else 4
+VOICES = 6 if hardware.is_rp2350() else 4
 
-try:
-    import audiodelays
-except ImportError:
-    EFFECTS = 0
+if hardware.is_rp2350():
+    try:
+        import audiodelays
+    except ImportError:
+        EFFECTS = 0
+    else:
+        EFFECTS = 1
+        EFFECTS_BUFFER = 1024
+        DELAY_LENGTH = 250
+        CHORUS_DELAY = 50
 else:
-    EFFECTS = 1
-    EFFECTS_BUFFER = 1024
-    DELAY_LENGTH = 250
-    CHORUS_DELAY = 50
+    EFFECTS = 0
 
 ## Audio Output + Synthesizer
 
@@ -93,13 +98,13 @@ if EFFECTS:
 else:
     mixer.voice[0].play(synth)
 
-voices = [synthvoice.oscillator.Oscillator(synth) for i in range(VOICES)]
+voices = [Oscillator(synth) for i in range(VOICES)]
 
-waveform = synthwaveform.mix(
-    synthwaveform.saw(),
-    (synthwaveform.saw(frequency=2.0), 0.5),
-    (synthwaveform.saw(frequency=3.0), 0.25),
-    (synthwaveform.saw(frequency=4.0), 0.125)
+waveform = relic_waveform.mix(
+    relic_waveform.saw(),
+    (relic_waveform.saw(frequency=2.0), 0.5),
+    (relic_waveform.saw(frequency=3.0), 0.25),
+    (relic_waveform.saw(frequency=4.0), 0.125)
 )
 envelope = synthio.Envelope(attack_time=0.02, attack_level=1.0, decay_time=0.05, sustain_level=0.5, release_time=0.25)
 for voice in voices:
@@ -116,12 +121,12 @@ async def synth_task() -> None:
 
 ## Keyboard Manager
 
-keyboard = synthkeyboard.Keyboard(
+keyboard = Keyboard(
     max_voices=VOICES,
     root=48,
 )
 
-def voice_press(voice:synthvoice.Voice) -> None:
+def voice_press(voice:Voice) -> None:
     voices[voice.index].press(
         notenum=voice.note.notenum,
         velocity=voice.note.velocity,
@@ -129,7 +134,7 @@ def voice_press(voice:synthvoice.Voice) -> None:
     hardware.led.value = True
 keyboard.on_voice_press = voice_press
 
-def voice_release(voice:synthvoice.Voice) -> None:
+def voice_release(voice:Voice) -> None:
     voices[voice.index].release()
     if not keyboard.notes:
         hardware.led.value = False
@@ -209,13 +214,13 @@ async def touch_task() -> None:
 
 ## Character LCD Menu
 
-lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
-    synthmenu.Percentage(
+lcd_menu = Character_LCD_Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
+    Percentage(
         title="Volume",
         default=1.0,
         on_update=lambda value, item: menu.set_attribute(mixer.voice, 'level', value),
     ),
-    synthmenu.Action("Exit", menu.load_launcher)
+    Action("Exit", menu.load_launcher)
 ))
 
 ## Controls

@@ -4,7 +4,7 @@
 
 import os
 import json
-import synthmenu
+from relic_menumanager import Group, Number, Bool, Action
 import menu
 
 PATH = "/settings.json"
@@ -39,19 +39,19 @@ _group = None
 
 def save() -> bool:
     global _group
-    if not isinstance(_group, synthmenu.Group):
+    if not isinstance(_group, Group):
         return False
     menu.write_message("Saving...")
     result = _group.write("/settings.json")
     menu.write_message("Complete!" if result else "Failed!", True)
     return result
 
-def group() -> synthmenu.Group:
+def group() -> Group:
     global _group
     if _group is None:
-        _group = synthmenu.Group("Settings", (
-            synthmenu.Group("MIDI", (
-                synthmenu.Number(
+        _group = Group("Settings", (
+            Group("MIDI", (
+                Number(
                     title="Channel",
                     default=0 if midi_channel is None else midi_channel,
                     step=1,
@@ -59,24 +59,24 @@ def group() -> synthmenu.Group:
                     maximum=16,
                     on_update=lambda value, item: menu.set_global_attribute(None if value == 0 else value, 'midi_channel')
                 ),
-                synthmenu.Bool(
+                Bool(
                     title="Thru",
                     default=midi_thru,
                     on_update=lambda value, item: menu.set_global_attribute(value, 'midi_thru'),
                 ),
-                synthmenu.Bool(
+                Bool(
                     title="Touch Out",
                     default=midi_touch_out,
                     on_update=lambda value, item: menu.set_global_attribute(value, 'midi_touch_out'),
                 ),
             )),
-            synthmenu.Group("Keyboard", tuple([
-                synthmenu.Bool(
+            Group("Keyboard", tuple([
+                Bool(
                     title="Touch",
                     default=keyboard_touch,
                     on_update=lambda value, item: menu.set_global_attribute(value, 'keyboard_touch'),
                 ),
             ])),
-            synthmenu.Action("Save", save),
+            Action("Save", save),
         ))
     return _group

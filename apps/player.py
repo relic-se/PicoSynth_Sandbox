@@ -4,7 +4,8 @@
 
 import audiomixer
 
-import synthmenu.character_lcd
+from relic_menumanager import Percentage, List, Action
+from relic_menumanager.character_lcd import Character_LCD_Menu
 
 import asyncio
 
@@ -43,7 +44,7 @@ hardware.audio.stop()
 
 ## Get list of songs
 
-songs = list(filter(lambda filename: filename.endswith(".wav") or filename.endswith(".mid"), os.listdir(DIR)))
+songs = list(filter(lambda filename: not filename.startswith(".") and (filename.endswith(".wav") or filename.endswith(".mid")), os.listdir(DIR)))
 
 # Remove extensions
 for i in range(len(songs)):
@@ -107,17 +108,21 @@ class Player():
             audio_path = None
         else:
             self._audio_file = open(audio_path, "rb")
-            self._wave = audiocore.WaveFile(self._audio_file)
-            self._mixer = audiomixer.Mixer(
-                voice_count=1,
-                channel_count=self._wave.channel_count,
-                sample_rate=self._wave.sample_rate,
-                buffer_size=hardware.BUFFER_SIZE,
-                bits_per_sample=self._wave.bits_per_sample,
-                samples_signed=True,
-            )
-            hardware.audio.play(self._mixer)
-            self._mixer.voice[0].level = self.level
+            try:
+                self._wave = audiocore.WaveFile(self._audio_file)
+            except ValueError:
+                audio_path = None
+            else:
+                self._mixer = audiomixer.Mixer(
+                    voice_count=1,
+                    channel_count=self._wave.channel_count,
+                    sample_rate=self._wave.sample_rate,
+                    buffer_size=hardware.BUFFER_SIZE,
+                    bits_per_sample=self._wave.bits_per_sample,
+                    samples_signed=True,
+                )
+                hardware.audio.play(self._mixer)
+                self._mixer.voice[0].level = self.level
 
     def play(self) -> None:
         if self._mixer and self._wave:
@@ -206,19 +211,19 @@ player = Player()
 
 ## Character LCD Menu
 
-lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
-    synthmenu.Percentage(
+lcd_menu = Character_LCD_Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
+    Percentage(
         title="Volume",
         default=1.0,
         on_update=lambda value, item: menu.set_attribute(player, 'level', value),
     ),
-    synthmenu.List(
+    List(
         title="Song",
         items=tuple([menu.format_name(song) for song in songs]),
         on_update=lambda value, item: player.load(value),
     ),
-    synthmenu.Action(lambda item: "Stop" if player.playing else "Play", player.toggle),
-    synthmenu.Action("Exit", menu.load_launcher)
+    Action(lambda item: "Stop" if player.playing else "Play", player.toggle),
+    Action("Exit", menu.load_launcher)
 ))
 
 # Load first song
