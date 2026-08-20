@@ -167,7 +167,7 @@ def midi_process_message(msg:MIDIMessage) -> None:
         hardware.midi_usb.send(msg)
         hardware.midi_uart.send(msg)
 
-    if settings.midi_channel is not None and msg.channel != settings.midi_channel:
+    if settings.midi_channel is not None and 1 <= settings.midi_channel <= 16 and msg.channel != settings.midi_channel - 1:
         return
     
     if isinstance(msg, NoteOn):
