@@ -11,7 +11,8 @@ import synthkeyboard
 import audiomixer
 import synthio
 
-import synthmenu.character_lcd
+from relic_menumanager import Percentage, Action
+from relic_menumanager.character_lcd import Character_LCD_Menu
 
 import adafruit_midi
 from adafruit_midi.note_on import NoteOn
@@ -209,13 +210,13 @@ async def touch_task() -> None:
 
 ## Character LCD Menu
 
-lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
-    synthmenu.Percentage(
+lcd_menu = Character_LCD_Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
+    Percentage(
         title="Volume",
         default=1.0,
         on_update=lambda value, item: menu.set_attribute(mixer.voice, 'level', value),
     ),
-    synthmenu.Action("Exit", menu.load_launcher)
+    Action("Exit", menu.load_launcher)
 ))
 
 ## Controls

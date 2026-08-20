@@ -4,7 +4,8 @@
 
 import audiomixer
 
-import synthmenu.character_lcd
+from relic_menumanager import Percentage, List, Action
+from relic_menumanager.character_lcd import Character_LCD_Menu
 
 import asyncio
 
@@ -205,19 +206,19 @@ player = Player()
 
 ## Character LCD Menu
 
-lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
-    synthmenu.Percentage(
+lcd_menu = Character_LCD_Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", (
+    Percentage(
         title="Volume",
         default=1.0,
         on_update=lambda value, item: menu.set_attribute(player, 'level', value),
     ),
-    synthmenu.List(
+    List(
         title="Song",
         items=tuple([menu.format_name(song) for song in songs]),
         on_update=lambda value, item: player.load(value),
     ),
-    synthmenu.Action(lambda item: "Stop" if player.playing else "Play", player.toggle),
-    synthmenu.Action("Exit", menu.load_launcher)
+    Action(lambda item: "Stop" if player.playing else "Play", player.toggle),
+    Action("Exit", menu.load_launcher)
 ))
 
 # Load first song

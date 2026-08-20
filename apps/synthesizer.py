@@ -9,7 +9,9 @@ import synthkeyboard
 import audiomixer
 import synthio
 
-import synthmenu.character_lcd
+from relic_menumanager import Group, Number, String, Action, Percentage, List, Time
+from relic_menumanager.synthio import Mix, Tune, Waveform, ADSREnvelope
+from relic_menumanager.character_lcd import Character_LCD_Menu
 
 import adafruit_midi
 from adafruit_midi.note_on import NoteOn
@@ -70,7 +72,7 @@ if EFFECTS:
 
     chorus_lfo = synthio.LFO(scale=0.0, offset=0.0, rate=1.0)
     synth.blocks.append(chorus_lfo)
-    def set_chorus_depth(value:float, item:synthmenu.Item = None) -> None:
+    def set_chorus_depth(value:float, item:Item = None) -> None:
         chorus_lfo.scale = CHORUS_DELAY * value / 2
         chorus_lfo.offset = CHORUS_DELAY * (1 - value / 2)
 
@@ -113,7 +115,7 @@ class VoiceType:
 voice_types = menu.get_enum(VoiceType)
 voice_type = VoiceType.POLYPHONIC
 
-def set_voice_type(value:int, item:synthmenu.Item = None) -> None:
+def set_voice_type(value:int, item:Item = None) -> None:
     global voice_type
     voice_type = value % len(voice_types)
     if voice_type == VoiceType.POLYPHONIC:
@@ -243,10 +245,10 @@ def copy_oscillator_attrs(index:int = 0) -> None:
             menu.write_message("Complete!")
 
 
-lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", tuple(
+lcd_menu = Character_LCD_Menu(hardware.lcd, hardware.COLUMNS, hardware.ROWS, "Menu", tuple(
     [
-        synthmenu.Group("Patch", (
-            patch := synthmenu.Number(
+        Group("Patch", (
+            patch := Number(
                 title="Index",
                 default=0,
                 step=1,
@@ -256,23 +258,23 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                 decimals=0,
                 on_update=lambda value, item: menu.load(lcd_menu, item, value, 'synthesizer'),
             ),
-            synthmenu.String("Name"),
-            synthmenu.Action("Save", lambda: menu.save(lcd_menu, patch.value, 'synthesizer')),
+            String("Name"),
+            Action("Save", lambda: menu.save(lcd_menu, patch.value, 'synthesizer')),
         )),
-        synthmenu.Group("Audio", (
-            synthmenu.Percentage(
+        Group("Audio", (
+            Percentage(
                 title="Level",
                 default=1.0,
                 on_update=lambda value, item: menu.set_attribute(mixer.voice, 'level', value),
             ),
         )),
-        synthmenu.Group("Keys", (
-            synthmenu.List(
+        Group("Keys", (
+            List(
                 title="Priority",
                 items=("High", "Low", "Last"),
                 on_update=lambda value, item: menu.set_attribute(keyboard, 'mode', value),
             ),
-            synthmenu.List(
+            List(
                 title="Voice",
                 items=tuple([item[0] for item in voice_types]),
                 on_update=set_voice_type,
@@ -280,13 +282,13 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
             menu.get_arpeggiator_group(keyboard.arpeggiator),
         )),
     ] + [
-        synthmenu.Group("Osc {:d}".format(i + 1) if OSCILLATORS > 1 else "Oscillator", (
-            synthmenu.Mix(
+        Group("Osc {:d}".format(i + 1) if OSCILLATORS > 1 else "Oscillator", (
+            Mix(
                 title="Mix",
                 on_level_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'amplitude', value),
                 on_pan_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'pan', value),
             ),
-            synthmenu.Tune(
+            Tune(
                 title="Tuning",
                 on_coarse_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'coarse_tune', value),
                 on_fine_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'fine_tune', value),
@@ -295,7 +297,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                 on_slew_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'pitch_slew', value),
                 on_slew_time_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'pitch_slew_time', value),
             ),
-            synthmenu.Waveform(
+            Waveform(
                 title="Waveform",
                 items=(
                     ("Sine", synthwaveform.sine),
@@ -308,7 +310,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                 on_loop_start_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'waveform_loop', (value, oscillators[i].waveform_loop[1])),
                 on_loop_end_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'waveform_loop', (oscillators[i].waveform_loop[0], value)),
             ),
-            synthmenu.ADSREnvelope(
+            ADSREnvelope(
                 title="Envelope",
                 on_attack_time_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'attack_time', value),
                 on_attack_level_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'attack_level', value),
@@ -316,17 +318,17 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                 on_sustain_level_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'sustain_level', value),
                 on_release_time_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'release_time', value),
             ),
-            synthmenu.Percentage(
+            Percentage(
                 title="Velocity",
                 on_update=lambda value, item: menu.set_attribute(oscillators[i::OSCILLATORS], 'velocity_amount', value),
             ),
-            synthmenu.Group("Filter", (
-                synthmenu.List(
+            Group("Filter", (
+                List(
                     title="Type",
                     items=("Low Pass", "High Pass", "Band Pass"),
                     on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'filter_type', value),
                 ),
-                synthmenu.Number(
+                Number(
                     title="Frequency",
                     default=1.0,
                     step=0.01,
@@ -337,7 +339,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     append="hz",
                     on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'filter_frequency', value),
                 ),
-                synthmenu.Number(
+                Number(
                     title="Resonance",
                     default=0.0,
                     step=0.01,
@@ -347,12 +349,12 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     decimals=3,
                     on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'filter_resonance', value),
                 ),
-                synthmenu.Group("Envelope", (
-                    synthmenu.Time(
+                Group("Envelope", (
+                    Time(
                         title="Attack",
                         on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'filter_attack_time', value),
                     ),
-                    synthmenu.Number(
+                    Number(
                         title="Amount",
                         default=0,
                         step=10,
@@ -361,13 +363,13 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                         append="hz",
                         on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'filter_amount', value),
                     ),
-                    synthmenu.Time(
+                    Time(
                         title="Release",
                         on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'filter_release_time', value),
                     ),
                 )),
-                synthmenu.Group("LFO", (
-                    synthmenu.Number(
+                Group("LFO", (
+                    Number(
                         "Depth",
                         default=0.0,
                         step=0.01,
@@ -378,7 +380,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                         append="hz",
                         on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'filter_depth', value),
                     ),
-                    synthmenu.Number(
+                    Number(
                         "Rate",
                         step=0.01,
                         maximum=32.0,
@@ -386,7 +388,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                         append="hz",
                         on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'filter_rate', value),
                     ),
-                    synthmenu.Time(
+                    Time(
                         "Delay",
                         step=0.01,
                         minimum=0.0,
@@ -395,13 +397,13 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     ),
                 )),
             )),
-            synthmenu.Group("Mod", (
-                synthmenu.Group("Tremolo", (
-                    synthmenu.Percentage(
+            Group("Mod", (
+                Group("Tremolo", (
+                    Percentage(
                         title="Depth",
                         on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'tremolo_depth', value / 2),
                     ),
-                    synthmenu.Number(
+                    Number(
                         title="Rate",
                         step=0.01,
                         maximum=32.0,
@@ -409,7 +411,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                         append="hz",
                         on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'tremolo_rate', value),
                     ),
-                    synthmenu.Time(
+                    Time(
                         title="Delay",
                         step=0.01,
                         minimum=0.0,
@@ -417,8 +419,8 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                         on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'tremolo_delay', value),
                     ),
                 )),
-                synthmenu.Group("Vibrato", (
-                    synthmenu.Number(
+                Group("Vibrato", (
+                    Number(
                         title="Depth",
                         default=0,
                         step=10,
@@ -428,7 +430,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                         append=" cents",
                         on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'vibrato_depth', value / 1200),
                     ),
-                    synthmenu.Number(
+                    Number(
                         title="Rate",
                         step=0.01,
                         maximum=32.0,
@@ -436,7 +438,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                         append="hz",
                         on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'vibrato_rate', value),
                     ),
-                    synthmenu.Time(
+                    Time(
                         title="Delay",
                         step=0.01,
                         minimum=0.0,
@@ -444,12 +446,12 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                         on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'vibrato_delay', value),
                     ),
                 )),
-                synthmenu.Group("Pan", (
-                    synthmenu.Percentage(
+                Group("Pan", (
+                    Percentage(
                         title="Depth",
                         on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'pan_depth', value),
                     ),
-                    synthmenu.Number(
+                    Number(
                         title="Rate",
                         step=0.01,
                         maximum=32.0,
@@ -457,7 +459,7 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                         append="hz",
                         on_update=lambda value, item, i=i: menu.set_attribute(oscillators[i::OSCILLATORS], 'pan_rate', value),
                     ),
-                    synthmenu.Time(
+                    Time(
                         title="Delay",
                         step=0.01,
                         minimum=0.0,
@@ -468,13 +470,13 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
             )),
         )) for i in range(OSCILLATORS)
     ] + ([
-        synthmenu.Group("Effects", (
-            synthmenu.Group("Chorus", (
-                synthmenu.Percentage(
+        Group("Effects", (
+            Group("Chorus", (
+                Percentage(
                     title="Depth",
                     on_update=set_chorus_depth,
                 ),
-                synthmenu.Number(
+                Number(
                     title="Rate",
                     step=0.01,
                     maximum=4.0,
@@ -482,13 +484,13 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     append="hz",
                     on_update=lambda value, item: menu.set_attribute(chorus_lfo, 'rate', value),
                 ),
-                synthmenu.Percentage(
+                Percentage(
                     title="Mix",
                     on_update=lambda value, item: menu.set_attribute(chorus, 'mix', value),
                 ),
             )),
-            synthmenu.Group("Delay", (
-                synthmenu.Number(
+            Group("Delay", (
+                Number(
                     title="Time",
                     step=0.01,
                     default=0.5,
@@ -499,22 +501,22 @@ lcd_menu = synthmenu.character_lcd.Menu(hardware.lcd, hardware.COLUMNS, hardware
                     decimals=0,
                     on_update=lambda value, item: menu.set_attribute(delay, 'delay_ms', value),
                 ),
-                synthmenu.Percentage(
+                Percentage(
                     title="Feedback",
                     on_update=lambda value, item: menu.set_attribute(delay, 'decay', value),
                 ),
-                synthmenu.Percentage(
+                Percentage(
                     title="Mix",
                     on_update=lambda value, item: menu.set_attribute(delay, 'mix', value),
                 ),
             )),
         )),
     ] if EFFECTS else []) + ([
-        synthmenu.Group("Tools", tuple([
-            synthmenu.Action("Copy Osc {:d}".format(i+1), lambda i=i: copy_oscillator_attrs(i)) for i in range(OSCILLATORS)
+        Group("Tools", tuple([
+            Action("Copy Osc {:d}".format(i+1), lambda i=i: copy_oscillator_attrs(i)) for i in range(OSCILLATORS)
         ])),
     ] if OSCILLATORS > 1 else []) + [
-        synthmenu.Action("Exit", menu.load_launcher),
+        Action("Exit", menu.load_launcher),
     ]
 ))
 

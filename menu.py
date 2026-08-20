@@ -6,7 +6,7 @@ import time
 import os
 import gc
 import supervisor
-import synthmenu
+from relic_menumanager import Menu, Item, Group, Action, Bool, List, Number, Percentage
 import synthkeyboard
 import hardware
 
@@ -47,7 +47,7 @@ def write_message(msg:str, delay:bool|float = False) -> None:
     if delay:
         time.sleep(delay if type(delay) is float else DELAY)
 
-def load(menu:synthmenu.Menu, item:synthmenu.Item, value:int, prepend:str = 'patch') -> bool:
+def load(menu:Menu, item:Item, value:int, prepend:str = 'patch') -> bool:
     on_update = item.on_update
     item.on_update = None
     path = "/presets/{:s}-{:d}.json".format(prepend, value)
@@ -65,7 +65,7 @@ def load(menu:synthmenu.Menu, item:synthmenu.Item, value:int, prepend:str = 'pat
     item.on_update = on_update
     return result
 
-def save(menu:synthmenu.Menu, value:int, prepend:str = 'patch') -> bool:
+def save(menu:Menu, value:int, prepend:str = 'patch') -> bool:
     write_message("Saving...")
     path = "/presets/{:s}-{:d}.json".format(prepend, value)
     try:
@@ -80,7 +80,7 @@ def save(menu:synthmenu.Menu, value:int, prepend:str = 'patch') -> bool:
         write_message("Failed!", True)
     return result
 
-def copy_data(source:str|synthmenu.Group, target:str|synthmenu.Group|list[str|synthmenu.Group], menu:synthmenu.Menu = None) -> None:
+def copy_data(source:str|Group, target:str|Group|list[str|Group], menu:Menu = None) -> None:
     write_message("Copying...")
 
     if type(source) is str and menu is not None:
@@ -91,9 +91,9 @@ def copy_data(source:str|synthmenu.Group, target:str|synthmenu.Group|list[str|sy
     for i in range(len(target)):
         if type(target[i]) is str and menu is not None:
             target[i] = menu.find(target)
-    target = list(filter(lambda item: isinstance(item, synthmenu.Group), target))
+    target = list(filter(lambda item: isinstance(item, Group), target))
 
-    if not isinstance(source, synthmenu.Group) or not len(target):
+    if not isinstance(source, Group) or not len(target):
         write_message("Failed!", True)
         return
     
@@ -129,7 +129,7 @@ def load_launcher() -> None:
     load_app()
 
 encoder_position = None
-def handle_controls(menu:synthmenu.Menu) -> None:
+def handle_controls(menu:Menu) -> None:
     global encoder_position
     if encoder_position is None:
         encoder_position = [encoder.position for encoder in hardware.encoders]
@@ -147,27 +147,27 @@ def handle_controls(menu:synthmenu.Menu) -> None:
         if hardware.buttons[i].rose:
             if not i:
                 menu.exit()
-            elif isinstance(menu.selected.current_item, (synthmenu.Group, synthmenu.Action)):
+            elif isinstance(menu.selected.current_item, (Group, Action)):
                 menu.select()
         
         encoder_position[i] = position
 
 # Premade Groups
 
-def get_arpeggiator_group(arpeggiator:synthkeyboard.Arpeggiator) -> synthmenu.Group:
+def get_arpeggiator_group(arpeggiator:synthkeyboard.Arpeggiator) -> Group:
     arpeggiator_steps = get_enum(synthkeyboard.TimerStep)
     arpeggiator_modes = get_enum(synthkeyboard.ArpeggiatorMode)
-    return synthmenu.Group("Arp", (
-        synthmenu.Bool(
+    return Group("Arp", (
+        Bool(
             title="Enabled",
             on_update=lambda value, item: set_attribute(arpeggiator, 'active', value),
         ),
-        synthmenu.List(
+        List(
             title="Mode",
             items=tuple([item[0] for item in arpeggiator_modes]),
             on_update=lambda value, item: set_attribute(arpeggiator, 'mode', arpeggiator_modes[value][1]),
         ),
-        synthmenu.Number(
+        Number(
             title="Octaves",
             step=1,
             default=0,
@@ -176,7 +176,7 @@ def get_arpeggiator_group(arpeggiator:synthkeyboard.Arpeggiator) -> synthmenu.Gr
             decimals=0,
             on_update=lambda value, item: set_attribute(arpeggiator, 'octaves', value),
         ),
-        synthmenu.Number(
+        Number(
             title="Tempo",
             step=1,
             default=120,
@@ -185,18 +185,18 @@ def get_arpeggiator_group(arpeggiator:synthkeyboard.Arpeggiator) -> synthmenu.Gr
             append=" bpm",
             on_update=lambda value, item: set_attribute(arpeggiator, 'bpm', value),
         ),
-        synthmenu.Percentage(
+        Percentage(
             title="Gate",
             default=0.5,
             step=0.05,
             on_update=lambda value, item: set_attribute(arpeggiator, 'gate', value),
         ),
-        synthmenu.List(
+        List(
             title="Steps",
             items=tuple([item[0] for item in arpeggiator_steps]),
             on_update=lambda value, item: set_attribute(arpeggiator, 'steps', arpeggiator_steps[value][1]),
         ),
-        synthmenu.Percentage(
+        Percentage(
             title="Prob",
             default=1.0,
             on_update=lambda value, item: set_attribute(arpeggiator, 'probability', value),

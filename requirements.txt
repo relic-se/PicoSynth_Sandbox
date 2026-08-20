@@ -6,7 +6,7 @@ adafruit_midi
 adafruit_midi_parser
 
 ttp229
-CircuitPython-SynthMenu
 relic_keymanager
-relic_waveform
+relic_menumanager
 relic_synthvoice
+relic_waveform
