@@ -26,10 +26,6 @@ import hardware
 import menu
 import os
 
-# Larger buffer needed to prevent stutters in audio when reading from SD
-hardware.BUFFER_SIZE = 32768 if hardware.is_rp2350() else 8192
-hardware.TASK_SLEEP = 0.1 #?
-
 hardware.init()
 
 DIR = "/sd/songs"
