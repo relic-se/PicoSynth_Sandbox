@@ -98,7 +98,10 @@ class Player():
         except OSError:
             midi_path = None
         else:
-            self._midi_file = umidiparser.MidiFile(midi_path)
+            self._midi_file = umidiparser.MidiFile(
+                midi_path,
+                buffer_size=0,  # read complete track to memory
+            )
 
         # Load Audio
         audio_path = "{:s}/{:s}.wav".format(DIR, name)
